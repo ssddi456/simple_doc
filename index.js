@@ -18,6 +18,7 @@ var jade = require('jade');
 
 
 var project_root = process.cwd();
+var readme_ext = '.md';
 
 var cp = child_process.spawn('jsdoc.cmd',[
   '-c',  path.join( __dirname, 'conf.json'),
@@ -40,8 +41,8 @@ cp.on('error',function( e ) {
 cp.on('exit',function( code ) {
   buffers = Buffer.concat(buffers);
   if( code ){
-    console.log( buffers);
-    return
+    console.log( buffers );
+    return;
   }
   buffers = buffers.toString()
               .replace(/^Parsing.*$/gm,'')
@@ -57,19 +58,30 @@ cp.on('exit',function( code ) {
 });
 
 function overview(){
-  return JSON.parse(fs.readFileSync(path.join(project_root,'package.json'),'utf8'))
+  try{
+    return JSON.parse(fs.readFileSync(path.join(project_root,'package.json'),'utf8'))
+  } catch(e){
+    readme_ext = '.html';
+    return {};
+  }
 }
 
 function parse_docs ( datas, package_info ){
-
+  console.log( JSON.stringify( datas, null, 2 ) );
   var indexs =  datas.filter(function( node ) {
                   return node.kind == 'package';
                 });
 
   var apis   =  datas.filter(function( node ){
-                  return node.kind == 'function'
+                  return node.kind == 'function' 
+                      && node.scope != 'instance';
                 });
-
+  var klass  =  datas.filter(function( node ) {
+                  return node.kind == 'class';
+                });
+  var member =  datas.filter(function( node ) {
+                  return node.scope == 'instance';
+                });
   var types  =  datas.filter(function( node ){
                   switch(node.kind){
                     case 'typedef':
@@ -92,7 +104,6 @@ function parse_docs ( datas, package_info ){
     }
 
     if( node.mixes && node.mixes.length ){
-      console.log( node.name, node.mixes );
       var mixins =  arr.filter(function(type){
                       return node.mixes.indexOf( type.name ) != -1;
                     });
@@ -103,7 +114,15 @@ function parse_docs ( datas, package_info ){
           });
         mixins
           .forEach(function( mixin ){
-            node.properties = node.properties.concat( mixin.properties );
+            var props = node.properties = node.properties || [];
+            mixin.properties.forEach(function( property ) {
+              if( !props.filter(function( prop ) {
+                    return prop.name == property.name;
+                  }).length
+              ){
+                props.push( property );
+              }
+            })
           });
       }
       node.mixins_resolved = true;
@@ -114,12 +133,16 @@ function parse_docs ( datas, package_info ){
     if( !node.params ){
       return;
     }
+    
     var callbacks = node.params.map(function( param ){
-                      return param.type.names.map(function( name ){
+                      return param.type 
+                          ? param.type.names.map(function( name ){
                               return find_node_by_name(name, datas);
                             }).filter(function(type){
-                              return type && type.type.names.indexOf('function') != -1;
-                            });
+                              
+                              return type && type.type && type.type.names.indexOf('function') != -1;
+                            })
+                          : [];
                     });
     if( callbacks.filter(function( param_type ){
           return param_type.length;
@@ -135,16 +158,46 @@ function parse_docs ( datas, package_info ){
       node.has_callback = true;
     }
   }
+  function resolve_scope( api ){
+    if( api.longname.match('<anonymous>~') ){
+      api.longname = api.longname
+                      .replace('<anonymous>~','');
+                      // function() {
+                      //   return path.basename( api.meta.filename ) + '.'
+                      // });
+    }
+  }
 
   apis.forEach(function( api, idx, arr ){
     resolve_callbacks( api, arr);
+
+    resolve_scope( api );
   });
 
+
+  member.forEach(function( member, idx, arr ){
+    var _klass = klass.filter(function( klass ) {
+                  return klass.longname == member.memberof
+                      || klass.name     == member.memberof;
+                 })[0];
+    if( _klass ){
+      var properties = _klass.properties = 
+            _klass.properties || [];
+      properties.push(member);
+      member.type = member.type || {names:['function']}
+    } else{
+      console.log( member );      
+    };
+  });
+
+  types = types.concat( klass );
   types.forEach(function( type, idx, arr ){
     resolve_mixins( type, arr );
   });
+  types.forEach(function( klass ) {
+    resolve_scope( klass );
+  });
 
-  console.log( JSON.stringify(datas,null,2)  );
   return {
     nodes : apis,
     types : types
@@ -169,5 +222,5 @@ function output_page ( datas, package_info ){
 
   var tmpl = jade.compile(fs.readFileSync( path.join(__dirname,'doc.jade')));
 
-  fs.writeFileSync( path.join(project_root,'README.md'),  tmpl(datas),  'utf8');
+  fs.writeFileSync( path.join(project_root,'README' + readme_ext ),  tmpl(datas),  'utf8');
 }

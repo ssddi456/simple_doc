@@ -1,0 +1,121 @@
+mixin get_type_href(name)
+  - var type_id = get_type_id( name )
+  if type_id
+    a(href="##{type_id}")= name
+  else
+    span= name
+
+mixin function_build(api, parent)
+  if api.params && api.params.length
+    table.table
+      thead
+        tr
+          th name
+          th types
+      tbody
+        - var callbacks = []
+          each param, idx_p in api.params
+            tr
+              td
+                = param.name
+              td
+                if param.type
+                  if param.type.names.indexOf('function') != -1
+                    - callbacks.push( param )
+                    | callback
+                  else
+                    +param_type_list(param.type.names)
+      tbody
+        each callback in callbacks
+          +callback_build(callback)
+
+mixin param_type_list( names )
+  each name, idx_n in names
+    +get_type_href(name)
+    if idx_n != names.length - 1
+      | , 
+
+mixin callback_build ( callback )
+  tr
+    th(colspan="2")
+      = callback.name
+  each param in callback.params
+    tr
+      td
+        = param.name
+      td
+        +param_type_list(param.type.names)
+
+
+mixin readme_body()
+  h2#Overview Overview
+  p
+    = package_info.description
+
+  h2#install Install
+  code
+    | npm install #{package_info.name}
+
+  h2#index index
+
+  h3 apis
+  ul
+    each api in nodes
+      li
+        a(href="##{api.name}")
+          = api.longname
+
+  h3 types
+  ul
+    each type in types
+      li
+        a(href="##{type.name}")
+          = type.longname
+
+  h2#apis apis
+  each api in nodes
+    h4(id="#{api.name}")
+      = api.longname
+    code 
+      | #{api.meta.path +'\\'+ api.meta.filename + ' | line : '+api.meta.lineno}
+    +function_build(api)
+    p
+      = api.description
+  h2#types types
+  each type in types
+    h4(id="#{type.name}")
+      = type.longname
+    if type.tags
+      p
+        each tag in type.tags
+          span
+            | # #{tag.title}
+          | &nbsp;
+    if type.description
+      p
+        = type.description
+    if type.properties
+      table.table
+        thead
+          th name
+          th type
+          th description
+        tbody
+          each property in type.properties
+            tr
+              td
+                = property.name
+              td
+                each name in property.type.names
+                  +get_type_href(name)
+              td
+                = property.description
+
+if !package_info.name
+  link(rel="stylesheet", type="text/css", href="https://assets-cdn.github.com/assets/github-097e3a01c37cee1b559eba68515b4477a84f8e04.css")
+  .container
+    #readme
+      article.markdown-body
+        +readme_body()
+else         
+  +readme_body()
