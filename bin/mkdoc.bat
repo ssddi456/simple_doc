@@ -1,0 +1,1 @@
+node "%node_path%\\simple_doc\\index.js"

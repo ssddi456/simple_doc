@@ -1,0 +1,26 @@
+{
+  "name": "simple_doc",
+  "version": "0.0.0",
+  "description": "jsdoc3",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin" : { 
+    "simple_doc" : "bin\\mkdoc.bat"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ssddi456/simple_doc.git"
+  },
+  "author": "ssddi456",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ssddi456/simple_doc/issues"
+  },
+  "dependencies" : {
+    "jsdoc3" : "latest",
+    "jade" : "latest"
+  },
+  "homepage": "https://github.com/ssddi456/simple_doc"
+}
