@@ -74,7 +74,8 @@ function parse_docs ( datas, package_info ){
 
   var apis   =  datas.filter(function( node ){
                   return node.kind == 'function' 
-                      && node.scope != 'instance';
+                      && node.scope != 'instance'
+                      && node.access!= 'private';
                 });
   var klass  =  datas.filter(function( node ) {
                   return node.kind == 'class';
@@ -167,7 +168,19 @@ function parse_docs ( datas, package_info ){
                       // });
     }
   }
-
+  function resolve_methods ( type ) {
+    var properties = [];
+    var methods    = [];
+    (type.properties || []).forEach(function( property ) {
+      if( property.type.names.indexOf('function') != -1 ){
+        methods.push(property);
+      } else {
+        properties.push(property);
+      }
+    });
+    type.properties = properties;
+    type.methods = methods;
+  }
   apis.forEach(function( api, idx, arr ){
     resolve_callbacks( api, arr);
 
@@ -194,8 +207,9 @@ function parse_docs ( datas, package_info ){
   types.forEach(function( type, idx, arr ){
     resolve_mixins( type, arr );
   });
-  types.forEach(function( klass ) {
-    resolve_scope( klass );
+  types.forEach(function( type ) {
+    resolve_scope( type );
+    resolve_methods( type );
   });
 
   return {

@@ -7,11 +7,13 @@ mixin get_type_href(name)
 
 mixin function_build(api, parent)
   if api.params && api.params.length
+    h5 inputs
     table.table
       thead
         tr
           th name
           th types
+          th description
       tbody
         - var callbacks = []
           each param, idx_p in api.params
@@ -25,9 +27,26 @@ mixin function_build(api, parent)
                     | callback
                   else
                     +param_type_list(param.type.names)
+              td 
+                = param.description
       tbody
         each callback in callbacks
           +callback_build(callback)
+  if api.returns && api.returns.length
+    h5 outputs
+    table.table
+      thead
+        tr
+          th types
+          th description
+      tbody      
+        each param, idx_p in api.returns
+          tr
+            td
+              if param.type
+                +param_type_list(param.type.names)
+            td 
+              = param.description
 
 mixin param_type_list( names )
   each name, idx_n in names
@@ -36,15 +55,16 @@ mixin param_type_list( names )
       | , 
 
 mixin callback_build ( callback )
-  tr
-    th(colspan="2")
-      = callback.name
-  each param in callback.params
+  if callback.params && callback.params.length
     tr
-      td
-        = param.name
-      td
-        +param_type_list(param.type.names)
+      th(colspan="2")
+        = callback.name
+    each param in callback.params
+      tr
+        td
+          = param.name
+        td
+          +param_type_list(param.type.names)
 
 
 mixin readme_body()
@@ -92,9 +112,9 @@ mixin readme_body()
             | # #{tag.title}
           | &nbsp;
     if type.description
-      p
-        = type.description
+      p= type.description
     if type.properties
+      h5 properties
       table.table
         thead
           th name
@@ -110,6 +130,14 @@ mixin readme_body()
                   +get_type_href(name)
               td
                 = property.description
+    if type.methods
+      h5 methods
+      ul
+        each method in type.methods
+          li
+            h6= method.name
+            p= method.description
+          +function_build(method)
 
 if !package_info.name
   link(rel="stylesheet", type="text/css", href="https://assets-cdn.github.com/assets/github-097e3a01c37cee1b559eba68515b4477a84f8e04.css")
