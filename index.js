@@ -2,7 +2,11 @@ var child_process = require('child_process');
 var fs = require('fs');
 var path = require('path');
 var jade = require('jade');
+var commander = require('commander');
 
+commander
+  .option('--md', 'output md doc')
+  .parse(process.argv);
 
 // jscode will output doc ast here
 // 
@@ -54,7 +58,8 @@ cp.on('exit',function( code ) {
                 });
   var view_data = parse_docs( datas );
   var package_info = overview();
-  output_page ( view_data, package_info );
+
+  output_page ( view_data, package_info, commander );
 });
 
 function overview(){
@@ -67,7 +72,7 @@ function overview(){
 }
 
 function parse_docs ( datas, package_info ){
-  console.log( JSON.stringify( datas, null, 2 ) );
+  // console.log( JSON.stringify( datas, null, 2 ) );
   var indexs =  datas.filter(function( node ) {
                   return node.kind == 'package';
                 });
@@ -149,10 +154,10 @@ function parse_docs ( datas, package_info ){
           return param_type.length;
         }).length 
     ){
-      console.log( 'replace callback');
+      // console.log( 'replace callback');
       callbacks.forEach(function(callback,idx){
         if(callback.length){
-          console.log( callback );
+          // console.log( callback );
           node.params[idx] = callback[0];
         }
       });
@@ -199,8 +204,8 @@ function parse_docs ( datas, package_info ){
       properties.push(member);
       member.type = member.type || {names:['function']}
     } else{
-      console.log( member );      
-    };
+      // console.log( member );   
+    };  
   });
 
   types = types.concat( klass );
@@ -218,7 +223,7 @@ function parse_docs ( datas, package_info ){
   };
 }
 
-function output_page ( datas, package_info ){
+function output_page ( datas, package_info, options ){
   datas.get_type_id = function( name ){
                         var arr_type = name.match(/Array\.<([^\)]+)>/);
                         if( arr_type ){
@@ -233,8 +238,16 @@ function output_page ( datas, package_info ){
                       };
 
   datas.package_info = package_info;
-
-  var tmpl = jade.compile(fs.readFileSync( path.join(__dirname,'doc.jade')));
+  var tmpl;
+  if( options.md ){
+    tmpl = jade.compile(fs.readFileSync( path.join(__dirname,'doc.md.jade')),{
+      compiler : require('./libs/compiler_for_md'),
+      compileDebug : true
+    });
+    readme_ext = '.md';
+  } else {
+    tmpl = jade.compile(fs.readFileSync( path.join(__dirname,'doc.jade')));
+  }
 
   fs.writeFileSync( path.join(project_root,'README' + readme_ext ),  tmpl(datas),  'utf8');
 }

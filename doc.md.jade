@@ -1,0 +1,79 @@
+- function get_type_href (name){
+-   var type_id = get_type_id( name );
+-   return type_id ? ( '[' + name + '](#'+ type_id + ')' ) : name;
+- }
+- function param_type_list (names){
+-   return names.map(get_type_href).join(',');
+- }
+
+
+
+mixin function_build(api)
+  if api.params && api.params.length
+    | ##### inputs
+    | | name | types | description |
+    | | ---- | ---- | ---- |
+    - var callbacks = []
+    each param, idx_p in api.params
+      | | #{param.name} | #{param.type && param_type_list(param.type.names)} | #{param.description} |
+  if api.returns && api.returns.length
+    | ##### outputs
+    | | types | description |
+    | | ---- | ---- |
+    each param, idx_p in api.returns
+      | | #{param.type && param_type_list(param.type.names)} | #{param.description} |
+
+mixin param_type_list( names )
+  | #{names.map(get_type_href).join(',')}
+
+
+
+mixin readme_body()
+  | ## Overview {#overview}
+
+  = package_info.description
+
+  | ## index {#index}
+
+  | ### apis
+  each api in nodes
+    | * [#{api.longname}](##{api.name})
+
+  | ### types
+  each type in types
+    | * [#{type.longname}](##{type.name})
+
+  | ## apis {#apis}
+  each api in nodes
+    | #### #{api.longname} (##{api.name})
+
+    | ``` 
+    | #{api.meta.path +'\\'+ api.meta.filename + ' | line : '+api.meta.lineno}
+    | ```
+    +function_build(api)
+    |  
+    = api.description
+  | ## types {#types}
+  each type in types
+    | #### #{type.longname} {##{type.name}}
+    if type.tags
+        each tag in type.tags
+          | #### #{tag.title} 
+    if type.description
+      |  
+      = type.description
+    if type.properties
+      | ##### properties
+      | | name | type | description |
+      | | ---- | ---- | ---- |
+      each property in type.properties
+        | | #{property.name} | #{property.type && property.type.names.map(get_type_href).join(' ')}| #{property.description} |
+    if type.methods
+      | ##### methods
+      each method in type.methods
+        | * ###### #{method.name}
+        = method.description
+        |  
+        +function_build(method)
+
++readme_body()

@@ -1,0 +1,22 @@
+- function param_type_list( names ){ 
+-   return names.join(',')
+- }
+
+mixin get_type_href(name)
+  - var type_id = '123 ' + name;
+  if type_id
+    | [#{name}](##{type_id}) 
+  else
+    = name
+
+mixin function_build(api)
+  | ##### inputs
+  | | name | types | description |
+  | |--------|--------|--------|
+  each param, idx_p in api.params
+    | | #{param.name} | #{param_type_list(param.type.names)} | #{param.description} |
+
+mixin main ()
+  +function_build(api)
+
++main()

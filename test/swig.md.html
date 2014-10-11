@@ -1,0 +1,24 @@
+{% macro get_type_href( name ) %}
+  [{{ name }}](123 {{ name }}) 
+{% endmacro %}
+  
+{% macro param_type_list(names) %}{% spaceless %}
+  {% for name in names %}
+    {{ name }}{% if !loop.last %},{% endif %}
+  {% endfor %}
+{% endspaceless %}{% endmacro %}
+
+{% macro function_build( api ) %}
+##### inputs
+| name | types | description |
+|--------|--------|--------|
+{% for param in api.params %}{% spaceless %}
+| {{ param.name }} | {{ param_type_list(param.type.names) }} | {{ param.description }} |
+{% endspaceless %}{% endfor %}
+{% endmacro %}
+
+{% macro main() %}
+  {{ function_build(api) }}
+{% endmacro %}
+
+{{ main() }}
