@@ -37,5 +37,15 @@ compiler_p.visitBlock = function( block ) {
                             }
                           }
                         };
-
+compiler_p.visitText = function(text){
+  var val = text.val;
+  var md_title = val.match(/^\s*#+\s/);
+  if( md_title ){
+    this.buffer('\n');
+  }
+  this.buffer(val, true);
+  if( md_title ){
+    this.buffer('\n');
+  }
+};
 module.exports = compiler;

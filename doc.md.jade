@@ -40,38 +40,28 @@ mixin param_type_list( names )
 
 mixin readme_body()
   | ## Overview
-  |  
   = escape_description(package_info.description)
-  |  
   | ## index
-  |  
   | ### apis
   each api in nodes
     | * [#{api.longname}](##{gwm_md_auto_archor(api.longname)})
-  |  
   | ### types
   each type in types
     | * [#{type.longname}](##{gwm_md_auto_archor(type.longname)})
-  |  
   | ## apis
   each api in nodes
-    |  
     | #### #{api.longname}
-    |  
     | ``` 
     | #{api.meta.path +'\\'+ api.meta.filename + ' | line : '+api.meta.lineno}
     | ```
     +function_build(api)
     |  
     = escape_description(api.description)
-  |  
   | ## types
   each type in types
-    |  
     | #### #{type.longname}
     if type.tags
         each tag in type.tags
-          |  
           | #### #{tag.title} 
     if type.description
       |  

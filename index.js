@@ -4,10 +4,6 @@ var path = require('path');
 var jade = require('jade');
 var commander = require('commander');
 
-commander
-  .option('--md', 'output md doc')
-  .parse(process.argv);
-
 // jscode will output doc ast here
 // 
 // our document should include :
@@ -20,53 +16,48 @@ commander
 // global types 
 //   objects
 
+function get_docs_form_files ( project_root, done ){
+  var cp = child_process.spawn('jsdoc.cmd',[
+    '-c',  path.join( __dirname, 'conf.json'),
+    '--verbose'
+  ],{
+    cwd : project_root
+  });
 
-var project_root = process.cwd();
-var readme_ext = '.md';
+  var buffers = [];
+  var errors = [];
+  cp.stdout.on('data',function( truck ) {
+    buffers.push(truck);
+  });
 
-var cp = child_process.spawn('jsdoc.cmd',[
-  '-c',  path.join( __dirname, 'conf.json'),
-  '--verbose'
-],{
-  cwd : project_root
-});
+  cp.stderr.pipe( process.stderr );
 
-var buffers = [];
-cp.stdout.on('data',function( truck ) {
-  buffers.push(truck);
-});
+  cp.on('error',function( e ) {
+    errors.push ( e ); 
+  });
 
-cp.stderr.pipe( process.stderr );
+  cp.on('exit',function( code ) {
+    buffers = Buffer.concat(buffers);
+    if( code ){
+      done(errors);
+      return;
+    }
+    buffers = buffers.toString()
+                .replace(/^Parsing.*$/gm,'')
+                .replace(/^Finished.*$/gm,'');
 
-cp.on('error',function( e ) {
-  console.log( e );
-});
-
-cp.on('exit',function( code ) {
-  buffers = Buffer.concat(buffers);
-  if( code ){
-    console.log( buffers );
-    return;
-  }
-  buffers = buffers.toString()
-              .replace(/^Parsing.*$/gm,'')
-              .replace(/^Finished.*$/gm,'');
-
-  var datas = JSON.parse(buffers.trim())
-                .filter(function( data ) {
-                  return !data.undocumented;
-                });
-  var view_data = parse_docs( datas );
-  var package_info = overview();
-
-  output_page ( view_data, package_info, commander );
-});
+    var datas = JSON.parse(buffers.trim())
+                  .filter(function( data ) {
+                    return !data.undocumented;
+                  });
+    done(null, datas);
+  });
+}
 
 function overview(){
   try{
     return JSON.parse(fs.readFileSync(path.join(project_root,'package.json'),'utf8'))
   } catch(e){
-    readme_ext = '.html';
     return {};
   }
 }
@@ -168,9 +159,6 @@ function parse_docs ( datas, package_info ){
     if( api.longname.match('<anonymous>~') ){
       api.longname = api.longname
                       .replace('<anonymous>~','');
-                      // function() {
-                      //   return path.basename( api.meta.filename ) + '.'
-                      // });
     }
   }
   function resolve_methods ( type ) {
@@ -222,8 +210,16 @@ function parse_docs ( datas, package_info ){
     types : types
   };
 }
-
+/**
+ * output doc page
+ * @param  {parsed_jsdoc_data} datas
+ * @param  {string} package_info 
+ * @param  {object} options      ext : set readme ext, default is html
+ *                               md  : if output gfm style md, if no ext has been given,
+ *                                     will readme file's ext will be md
+ */
 function output_page ( datas, package_info, options ){
+  var readme_ext = '.html';
   datas.get_type_id = function( name ){
                         var arr_type = name.match(/Array\.<([^\)]+)>/);
                         if( arr_type ){
@@ -249,5 +245,28 @@ function output_page ( datas, package_info, options ){
     tmpl = jade.compile(fs.readFileSync( path.join(__dirname,'doc.jade')));
   }
 
-  fs.writeFileSync( path.join(project_root,'README' + readme_ext ),  tmpl(datas),  'utf8');
+  fs.writeFileSync( path.join(options.project_root,'README' + (options.ext || readme_ext) ),  tmpl(datas),  'utf8');
+}
+
+
+
+module.exports = {
+  get_docs_form_files : get_docs_form_files,
+  parse_docs          : parse_docs,
+  output_page         : output_page
+}
+
+// condition
+if( require.main == module ){ 
+  // do
+  commander
+    .option('--md', 'output md doc')
+    .parse(process.argv);
+  var project_root = process.cwd();
+  get_docs_form_files(project_root,function( err, datas ){
+    var view_data = parse_docs( datas );
+    var package_info = overview();
+    commander.project_root = project_root;
+    output_page ( view_data, package_info, commander );
+  })
 }
